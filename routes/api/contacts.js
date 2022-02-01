@@ -37,7 +37,7 @@ router.get("/:contactId", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const { error } = contactSchema.validate(req.body);
-    console.log(error);
+
     if (error) throw new CreateError(400, error.message);
 
     const result = await contacts.addContact(req.body);
