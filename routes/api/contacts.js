@@ -1,5 +1,6 @@
 const express = require("express");
 const CreateError = require("http-errors");
+const ObjectId = require("mongoose").Types.ObjectId;
 
 const { Contact, schemas } = require("../../models/contact");
 
@@ -17,6 +18,9 @@ router.get("/", async (req, res, next) => {
 
 router.get("/:contactId", async (req, res, next) => {
   try {
+    if (!ObjectId.isValid(req.params.contactId))
+      throw new CreateError(400, "Not a valid ID");
+
     const result = await Contact.findById(req.params.contactId);
 
     if (!result) throw new CreateError(404, "Not found");
@@ -43,6 +47,9 @@ router.post("/", async (req, res, next) => {
 
 router.delete("/:contactId", async (req, res, next) => {
   try {
+    if (!ObjectId.isValid(req.params.contactId))
+      throw new CreateError(400, "Not a valid ID");
+
     const removedContact = await Contact.findByIdAndDelete(
       req.params.contactId
     );
@@ -59,6 +66,9 @@ router.delete("/:contactId", async (req, res, next) => {
 
 router.put("/:contactId", async (req, res, next) => {
   try {
+    if (!ObjectId.isValid(req.params.contactId))
+      throw new CreateError(400, "Not a valid ID");
+
     const { error } = schemas.add.validate(req.body);
 
     if (error) throw new CreateError(400, error.message);
@@ -78,6 +88,9 @@ router.put("/:contactId", async (req, res, next) => {
 });
 
 router.patch("/:contactId/favorite", async (req, res, next) => {
+  if (!ObjectId.isValid(req.params.contactId))
+    throw new CreateError(400, "Not a valid ID");
+
   const { error } = schemas.updateFavorite.validate(req.body);
 
   if (error) throw new CreateError(400, error.message);
