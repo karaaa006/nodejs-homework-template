@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const { User, schemas } = require("../../models/user");
+const { authenticate } = require("../../middlewares");
 
 const router = express.Router();
 
@@ -47,12 +48,54 @@ router.post("/login", async (req, res, next) => {
     if (!compareResult)
       throw new CreateError(401, "Email or password is wrong");
 
-    const token = jwt.sign(user.id, SECRET_KEY);
+    const payload = {
+      id: user._id,
+    };
 
+    const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "1h" });
+    await User.findByIdAndUpdate(user._id, { token });
     res.json({
       user: { email: user.email, subscription: user.subscription },
       token,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/logout", authenticate, async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { token: "" });
+
+    res.status(204).json();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/current", authenticate, (req, res, next) => {
+  try {
+    res.json({ email: req.user.email, subscription: req.user.subscription });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch("/subscription", authenticate, async (req, res, next) => {
+  try {
+    const { error } = schemas.updateSubscription.validate(req.body);
+
+    if (error) throw new CreateError(400, error.message);
+
+    const { email, subscription } = await User.findByIdAndUpdate(
+      req.user.id,
+      req.body,
+      {
+        new: true,
+      }
+    );
+
+    res.json({ email, subscription });
   } catch (e) {
     next(e);
   }

@@ -1,14 +1,22 @@
 const express = require("express");
 const CreateError = require("http-errors");
 const ObjectId = require("mongoose").Types.ObjectId;
+const { authenticate } = require("../../middlewares");
 
 const { Contact, schemas } = require("../../models/contact");
 
 const router = express.Router();
 
-router.get("/", async (req, res, next) => {
+router.get("/", authenticate, async (req, res, next) => {
   try {
-    const result = await Contact.find();
+    const { page = 1, limit = 10, ...filter } = req.query;
+    const skip = (page - 1) * limit;
+
+    const result = await Contact.find(
+      { owner: req.user.id, ...filter },
+      "-createdAt -updatedAt",
+      { skip, limit }
+    ).populate("owner", "email");
 
     res.json(result);
   } catch (e) {
@@ -31,13 +39,14 @@ router.get("/:contactId", async (req, res, next) => {
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", authenticate, async (req, res, next) => {
   try {
     const { error } = schemas.add.validate(req.body);
 
     if (error) throw new CreateError(400, error.message);
+    const data = { ...req.body, owner: req.user._id };
 
-    const result = await Contact.create(req.body);
+    const result = await Contact.create(data);
 
     res.status(201).json(result);
   } catch (e) {
@@ -45,7 +54,7 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.delete("/:contactId", async (req, res, next) => {
+router.delete("/:contactId", authenticate, async (req, res, next) => {
   try {
     if (!ObjectId.isValid(req.params.contactId))
       throw new CreateError(400, "Not a valid ID");
@@ -64,7 +73,7 @@ router.delete("/:contactId", async (req, res, next) => {
   }
 });
 
-router.put("/:contactId", async (req, res, next) => {
+router.put("/:contactId", authenticate, async (req, res, next) => {
   try {
     if (!ObjectId.isValid(req.params.contactId))
       throw new CreateError(400, "Not a valid ID");
@@ -87,7 +96,7 @@ router.put("/:contactId", async (req, res, next) => {
   }
 });
 
-router.patch("/:contactId/favorite", async (req, res, next) => {
+router.patch("/:contactId/favorite", authenticate, async (req, res, next) => {
   if (!ObjectId.isValid(req.params.contactId))
     throw new CreateError(400, "Not a valid ID");
 
