@@ -11,9 +11,8 @@ const joiSignupSchema = Joi.object({
 });
 
 const joiLoginSchema = Joi.object({
-  subscription: Joi.string()
-    .valid("starter", "pro", "business")
-    .default("starter"),
+  password: Joi.string().min(6).required(),
+  email: Joi.string().required(),
 });
 
 const joiUpdateSubscriptionSchema = Joi.object({

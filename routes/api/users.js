@@ -36,11 +36,12 @@ router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const { error } = schemas.login.validate(req.body);
+    console.log(email, password);
 
     if (error) throw new CreateError(400, error.message);
 
     const user = await User.findOne({ email });
-
+    console.log(user);
     if (!user) throw new CreateError(401, "Email or password is wrong");
 
     const compareResult = await bcrypt.compare(password, user.password);
