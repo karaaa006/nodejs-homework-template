@@ -32,12 +32,12 @@ router.get("/:contactId", authenticate, async (req, res, next) => {
     if (!ObjectId.isValid(req.params.contactId))
       throw new CreateError(400, "Not a valid ID");
 
-    const result = await Contact.findById(req.params.contactId);
+    const result = await Contact.findOne({
+      _id: ObjectId(req.params.contactId),
+      owner: req.user.id,
+    });
 
     if (!result) throw new CreateError(404, "Not found");
-
-    if (String(result.owner) !== req.user.id)
-      throw new CreateError(401, "Not authorized");
 
     res.json(result);
   } catch (e) {
@@ -65,17 +65,12 @@ router.delete("/:contactId", authenticate, async (req, res, next) => {
     if (!ObjectId.isValid(req.params.contactId))
       throw new CreateError(400, "Not a valid ID");
 
-    const result = await Contact.findById(req.params.contactId);
+    const result = await Contact.findOneAndDelete({
+      _id: ObjectId(req.params.contactId),
+      owner: req.user.id,
+    });
 
-    if (String(result.owner) !== req.user.id)
-      throw new CreateError(401, "Not authorized");
-
-    const removedContact = await Contact.findByIdAndDelete(
-      req.params.contactId,
-      { owner: req.user.id }
-    );
-
-    if (removedContact) {
+    if (result) {
       res.status(200).json({ message: "contact deleted" });
     } else {
       throw new CreateError(404, "Not found");
@@ -94,13 +89,11 @@ router.put("/:contactId", authenticate, async (req, res, next) => {
 
     if (error) throw new CreateError(400, error.message);
 
-    const findedContact = await Contact.findById(req.params.contactId);
-
-    if (String(findedContact.owner) !== req.user.id)
-      throw new CreateError(401, "Not authorized");
-
-    const result = await Contact.findByIdAndUpdate(
-      req.params.contactId,
+    const result = await Contact.findOneAndUpdate(
+      {
+        _id: ObjectId(req.params.contactId),
+        owner: req.user.id,
+      },
       req.body,
       { new: true }
     );
@@ -114,27 +107,29 @@ router.put("/:contactId", authenticate, async (req, res, next) => {
 });
 
 router.patch("/:contactId/favorite", authenticate, async (req, res, next) => {
-  if (!ObjectId.isValid(req.params.contactId))
-    throw new CreateError(400, "Not a valid ID");
+  try {
+    if (!ObjectId.isValid(req.params.contactId))
+      throw new CreateError(400, "Not a valid ID");
 
-  const { error } = schemas.updateFavorite.validate(req.body);
+    const { error } = schemas.updateFavorite.validate(req.body);
 
-  if (error) throw new CreateError(400, error.message);
+    if (error) throw new CreateError(400, error.message);
 
-  const findedContact = await Contact.findById(req.params.contactId);
+    const result = await Contact.findOneAndUpdate(
+      {
+        _id: ObjectId(req.params.contactId),
+        owner: req.user.id,
+      },
+      req.body,
+      { new: true }
+    );
 
-  if (String(findedContact.owner) !== req.user.id)
-    throw new CreateError(401, "Not authorized");
+    if (!result) throw new CreateError(404, "Not found");
 
-  const result = await Contact.findByIdAndUpdate(
-    req.params.contactId,
-    req.body,
-    { new: true }
-  );
-
-  if (!result) throw new CreateError(404, "Not found");
-
-  res.json(result);
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
 });
 
 module.exports = router;
