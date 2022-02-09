@@ -2,28 +2,40 @@ const express = require("express");
 const CreateError = require("http-errors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const fs = require("fs/promises");
+const path = require("path");
+
 require("dotenv").config();
 
 const { User, schemas } = require("../../models/user");
-const { authenticate } = require("../../middlewares");
+const { authenticate, upload } = require("../../middlewares");
 
 const router = express.Router();
 
 const { SECRET_KEY } = process.env;
+
+const avatarsDir = path.join(__dirname, "../../", "public", "avatars");
 
 router.post("/signup", async (req, res, next) => {
   try {
     const { error } = schemas.signup.validate(req.body);
 
     if (error) throw new CreateError(400, error.message);
+
     const salt = await bcrypt.genSalt(10);
     const hashedPass = await bcrypt.hash(req.body.password, salt);
 
     const user = await User.findOne({ email: req.body.email });
+
     if (user) throw new CreateError(409, "Email in use");
+
+    const avatarURL = gravatar.url(req.body.email);
+
     const { email, subscription } = await User.create({
       ...req.body,
       password: hashedPass,
+      avatarURL,
     });
 
     res.status(201).json({ email, subscription });
@@ -100,5 +112,36 @@ router.patch("/subscription", authenticate, async (req, res, next) => {
     next(e);
   }
 });
+
+router.patch(
+  "/avatars",
+  upload.single("avatar"),
+  authenticate,
+  async (req, res, next) => {
+    const { path: tmpDir, filename } = req.file;
+
+    try {
+      const [extension] = filename.split(".").reverse();
+
+      const newFilename = `${req.user._id}.${extension}`;
+      const resultUpload = path.join(avatarsDir, newFilename);
+
+      await fs.rename(tmpDir, resultUpload);
+      const { avatarURL } = await User.findByIdAndUpdate(
+        req.user.id,
+        {
+          avatarURL: path.join("avatars", newFilename),
+        },
+        {
+          new: true,
+        }
+      );
+      res.json({ avatarURL });
+    } catch (e) {
+      await fs.unlink(tmpDir);
+      next(e);
+    }
+  }
+);
 
 module.exports = router;
