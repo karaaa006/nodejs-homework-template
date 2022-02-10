@@ -3,6 +3,8 @@ const CreateError = require("http-errors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const gravatar = require("gravatar");
+const Jimp = require("jimp");
+
 const fs = require("fs/promises");
 const path = require("path");
 
@@ -121,12 +123,16 @@ router.patch(
     const { path: tmpDir, filename } = req.file;
 
     try {
+      const avatar = await Jimp.read(tmpDir);
+      avatar.cover(250, 250).write(tmpDir);
+
       const [extension] = filename.split(".").reverse();
 
       const newFilename = `${req.user._id}.${extension}`;
       const resultUpload = path.join(avatarsDir, newFilename);
 
       await fs.rename(tmpDir, resultUpload);
+
       const { avatarURL } = await User.findByIdAndUpdate(
         req.user.id,
         {
