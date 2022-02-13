@@ -1,9 +1,24 @@
+const CreateError = require("http-errors");
 const multer = require("multer");
 
 const multerConfig = multer.diskStorage({
   destination: "tmp/",
   filename: (req, file, cb) => {
-    cb(null, file.originalname);
+    console.log(file.mimetype);
+    if (
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/jpg" ||
+      file.mimetype === "image/jpeg"
+    ) {
+      cb(null, file.originalname);
+    } else {
+      cb(
+        new CreateError(
+          400,
+          "Доступные форматы для загрузки: PNG, JPG или JPEG"
+        )
+      );
+    }
   },
 });
 

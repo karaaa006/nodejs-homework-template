@@ -32,7 +32,7 @@ router.post("/signup", async (req, res, next) => {
 
     if (user) throw new CreateError(409, "Email in use");
 
-    const avatarURL = gravatar.url(req.body.email);
+    const avatarURL = gravatar.url(req.body.email, { protocol: "http" });
 
     const { email, subscription } = await User.create({
       ...req.body,
@@ -136,7 +136,7 @@ router.patch(
       const { avatarURL } = await User.findByIdAndUpdate(
         req.user.id,
         {
-          avatarURL: path.join("avatars", newFilename),
+          avatarURL: path.join(avatarsDir, newFilename),
         },
         {
           new: true,
